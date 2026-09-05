@@ -12,7 +12,7 @@ import {
 } from "@ant-design/icons";
 import { ProLayout } from "@ant-design/pro-components";
 import { Dropdown } from "antd";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 
 export default function BasicLayout() {
@@ -75,15 +75,7 @@ export default function BasicLayout() {
             </Dropdown>
           ),
         }}
-        menuItemRender={(item, dom) => (
-          <div
-            onClick={() => {
-              if (item.path) nav(item.path);
-            }}
-          >
-            {dom}
-          </div>
-        )}
+        menuItemRender={(item, dom) => <Link to={item.path || "/"}>{dom}</Link>}
         token={{
           header: { colorBgHeader: "#fff" },
           sider: { colorMenuBackground: "#fff" },

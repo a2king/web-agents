@@ -12,6 +12,8 @@ body,
   padding: 16px;
   background: #fff;
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: box-shadow 0.2s;
 }
 

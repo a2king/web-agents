@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Empty, Modal, Select, Space, Typography, message } from "antd";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -64,10 +64,11 @@ export default function Sessions() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
           {rows.map((row) => (
-            <div
+            <Link
               key={row.id}
+              to={`/sessions/${row.id}`}
               className={`session-card ${row.border_status}`}
-              onClick={() => nav(`/sessions/${row.id}`)}
+              style={{ display: "block", color: "inherit" }}
             >
               <Typography.Title level={5} style={{ marginTop: 0 }}>
                 {row.title}
@@ -84,6 +85,7 @@ export default function Sessions() {
                   danger
                   size="small"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     remove(row);
                   }}
@@ -91,7 +93,7 @@ export default function Sessions() {
                   删除
                 </Button>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
