@@ -81,17 +81,22 @@ export default function Sessions() {
                 )}
               </Space>
               <div style={{ marginTop: 12 }}>
-                <Button
-                  danger
-                  size="small"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    remove(row);
-                  }}
-                >
-                  删除
-                </Button>
+                <Space>
+                  <Button type="primary" size="small" onClick={() => nav(`/sessions/${row.id}`)}>
+                    打开
+                  </Button>
+                  <Button
+                    danger
+                    size="small"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      remove(row);
+                    }}
+                  >
+                    删除
+                  </Button>
+                </Space>
               </div>
             </Link>
           ))}
