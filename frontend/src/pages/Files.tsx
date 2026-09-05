@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api, client, downloadFile } from "../api";
 
 export default function Files() {
-  const [path, setPath] = useState("shared");
+  const [path, setPath] = useState("");
   const [data, setData] = useState<any>({ items: [], disk_used_mb: 0, disk_mb: 0 });
 
   const load = async (p = path) => {
@@ -13,7 +13,7 @@ export default function Files() {
   };
 
   useEffect(() => {
-    load("shared");
+    load("");
   }, []);
 
   return (
@@ -26,6 +26,7 @@ export default function Files() {
       }
     >
       <Space style={{ marginBottom: 12 }} wrap>
+        <Button onClick={() => load("")}>租户根目录</Button>
         <Button onClick={() => load("shared")}>/shared</Button>
         <Button onClick={() => load("sessions")}>/sessions</Button>
         <Input
