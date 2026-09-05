@@ -1,6 +1,7 @@
-import { Button, Card, Input, Modal, Radio, Select, Space, Spin, Tag, Typography, message } from "antd";
+import { ArrowUpOutlined, StopOutlined } from "@ant-design/icons";
+import { Modal, Radio, Select, Space, Spin, Typography, message } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api } from "../api";
 
 function payloadOf(e: any) {
@@ -32,17 +33,13 @@ function eventLine(e: any) {
       return `等待确认：${p.reason || "高风险删除"}`;
     case "error":
       return `错误：${p.message || ""}`;
-    case "assistant":
-    case "token":
-      return "";
     default:
-      return p.message || p.reason || "";
+      return "";
   }
 }
 
 export default function SessionDetail() {
   const { id } = useParams();
-  const nav = useNavigate();
   const [detail, setDetail] = useState<any>(null);
   const [models, setModels] = useState<any[]>([]);
   const [text, setText] = useState("");
@@ -93,12 +90,12 @@ export default function SessionDetail() {
               setEvents((prev) => [...prev, event]);
               if (event.event_type === "confirm") setConfirmOpen(true);
             } catch {
-              /* ignore heartbeat */
+              /* ignore */
             }
           }
         }
       } catch {
-        /* polling fallback */
+        /* polling */
       }
     };
     readStream();
@@ -122,7 +119,7 @@ export default function SessionDetail() {
   const logs = useMemo(() => (events || []).map(eventLine).filter(Boolean), [events]);
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || running) return;
     try {
       const resp = await api("post", `/sessions/${id}/messages`, {
         content: text,
@@ -138,83 +135,91 @@ export default function SessionDetail() {
 
   if (loading || !detail) {
     return (
-      <Card>
-        <Spin tip="加载会话..." />
-      </Card>
+      <div className="gpt-loading">
+        <Spin />
+      </div>
     );
   }
   const s = detail.session;
+  const messages = detail.messages || [];
 
   return (
-    <Card
-      title={s.title}
-      extra={
-        <Space>
-          <Tag color={s.border_status === "running" ? "blue" : s.border_status === "confirm" ? "orange" : "default"}>
-            {s.status}
-          </Tag>
-          <Select
-            value={s.model_id}
-            disabled={running}
-            style={{ width: 200 }}
-            options={models.map((m) => ({ value: m.id, label: m.name }))}
-            onChange={(v) => setDetail({ ...detail, session: { ...s, model_id: v } })}
-          />
-          {running && (
-            <Button
-              danger
-              onClick={async () => {
-                await api("post", `/sessions/${id}/cancel`);
-                message.success("已取消");
-                load();
-              }}
-            >
-              取消任务
-            </Button>
-          )}
-          <Button onClick={() => nav("/sessions")}>返回列表</Button>
-        </Space>
-      }
-    >
-      <Typography.Paragraph type="secondary">
-        运行中仅支持旁观。使用 <code>/skill名</code> 指定已上传的 Skill。关闭页面后任务仍在后台执行。
-      </Typography.Paragraph>
-      <div ref={boxRef} style={{ maxHeight: 420, overflow: "auto", marginBottom: 16 }}>
-        {(detail.messages || []).map((m: any) => (
-          <div
-            key={`m-${m.id}`}
-            style={{
-              marginBottom: 12,
-              padding: "10px 14px",
-              borderRadius: 8,
-              background: m.role === "user" ? "#e6f4ff" : "#f6ffed",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            <Typography.Text strong>{m.role === "user" ? "你" : "Agent"}</Typography.Text>
-            <div>{m.content}</div>
+    <div className="gpt-chat">
+      <header className="gpt-topbar">
+        <Select
+          bordered={false}
+          value={s.model_id}
+          disabled={running}
+          options={models.map((m) => ({ value: m.id, label: m.name }))}
+          onChange={(v) => setDetail({ ...detail, session: { ...s, model_id: v } })}
+        />
+        <span className={`gpt-status ${s.border_status}`}>{s.status}</span>
+      </header>
+
+      <div className="gpt-thread" ref={boxRef}>
+        {messages.length === 0 && (
+          <div className="gpt-empty-mini">
+            <h2>{s.title === "新对话" ? "有什么可以帮忙的？" : s.title}</h2>
+          </div>
+        )}
+        {messages.map((m: any) => (
+          <div key={m.id} className={`gpt-turn ${m.role}`}>
+            {m.role !== "user" && <div className="gpt-mini-avatar">A</div>}
+            <div className="gpt-bubble">{m.content}</div>
           </div>
         ))}
-        {(detail.messages || []).length === 0 && <Typography.Text type="secondary">还没有消息，提交任务后会在此回放。</Typography.Text>}
+        {logs.length > 0 && (
+          <details className="gpt-logs">
+            <summary>运行日志</summary>
+            <pre>{logs.join("\n")}</pre>
+          </details>
+        )}
       </div>
-      {logs.length > 0 && (
-        <details style={{ marginBottom: 16 }}>
-          <summary style={{ cursor: "pointer", color: "#667085" }}>运行日志（可回放）</summary>
-          <div className="stream-box" style={{ minHeight: 80, maxHeight: 200, marginTop: 8 }}>
-            {logs.join("\n")}
+
+      <div className="gpt-dock">
+        <div className="gpt-composer">
+          <textarea
+            disabled={running}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={running ? "运行中，可旁观或停止" : "询问任何问题，可用 /skill 指定技能"}
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+          <div className="gpt-composer-bar">
+            <span className="gpt-hint">Enter 发送 · Shift+Enter 换行</span>
+            {running ? (
+              <button
+                type="button"
+                className="gpt-send ready stop"
+                onClick={async () => {
+                  await api("post", `/sessions/${id}/cancel`);
+                  message.success("已取消");
+                  load();
+                }}
+                aria-label="停止"
+              >
+                <StopOutlined />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`gpt-send ${text.trim() ? "ready" : ""}`}
+                disabled={!text.trim()}
+                onClick={send}
+                aria-label="发送"
+              >
+                <ArrowUpOutlined />
+              </button>
+            )}
           </div>
-        </details>
-      )}
-      <Input.TextArea
-        disabled={running}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={running ? "运行中只读旁观" : "输入任务，可用 /report 指定 skill"}
-        autoSize={{ minRows: 2, maxRows: 6 }}
-      />
-      <Button type="primary" disabled={running} onClick={send} style={{ marginTop: 12 }}>
-        提交任务
-      </Button>
+        </div>
+      </div>
 
       <Modal
         title="高风险操作确认"
@@ -236,6 +241,6 @@ export default function SessionDetail() {
           </Space>
         </Radio.Group>
       </Modal>
-    </Card>
+    </div>
   );
 }

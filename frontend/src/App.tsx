@@ -1,8 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import BasicLayout from "./layouts/BasicLayout";
+import ChatLayout from "./layouts/ChatLayout";
 import Login from "./pages/Login";
-import Sessions from "./pages/Sessions";
+import ChatHome from "./pages/ChatHome";
 import SessionDetail from "./pages/SessionDetail";
 import Files from "./pages/Files";
 import Skills from "./pages/Skills";
@@ -32,6 +33,17 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
+          path="/sessions"
+          element={
+            <Private>
+              <ChatLayout />
+            </Private>
+          }
+        >
+          <Route index element={<ChatHome />} />
+          <Route path=":id" element={<SessionDetail />} />
+        </Route>
+        <Route
           path="/"
           element={
             <Private>
@@ -40,8 +52,6 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/sessions" replace />} />
-          <Route path="sessions" element={<Sessions />} />
-          <Route path="sessions/:id" element={<SessionDetail />} />
           <Route path="files" element={<Files />} />
           <Route path="skills" element={<Skills />} />
           <Route path="automations" element={<Automations />} />

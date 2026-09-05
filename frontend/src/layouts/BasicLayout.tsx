@@ -23,7 +23,7 @@ export default function BasicLayout() {
   const routes = {
     path: "/",
     routes: [
-      { path: "/sessions", name: "会话", icon: <RobotOutlined /> },
+      { path: "/sessions", name: "对话", icon: <RobotOutlined /> },
       { path: "/files", name: "文件空间", icon: <FileOutlined /> },
       { path: "/skills", name: "Skills", icon: <ThunderboltOutlined /> },
       { path: "/automations", name: "自动化任务", icon: <ScheduleOutlined /> },
