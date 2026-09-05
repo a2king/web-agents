@@ -84,14 +84,19 @@ export default function Files() {
             render: (_: any, row: any) => (
               <Space>
                 {!row.is_dir && <a onClick={() => downloadFile(row.path)}>下载</a>}
-                <a
-                  onClick={async () => {
-                    await api("delete", "/files", { path: row.path });
-                    load(path);
-                  }}
-                >
-                  删除
-                </a>
+                {row.is_dir && (
+                  <a onClick={() => load(row.path)}>打开</a>
+                )}
+                {!["sessions", "shared", "skills"].includes(row.path) && (
+                  <a
+                    onClick={async () => {
+                      await api("delete", "/files", { path: row.path });
+                      load(path);
+                    }}
+                  >
+                    删除
+                  </a>
+                )}
               </Space>
             ),
           },
