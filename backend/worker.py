@@ -7,17 +7,18 @@ from __future__ import annotations
 
 import time
 
-from redis import Redis
 from rq import Worker
 
 from app import create_app
-from app.jobs import tick_automations, drain_token_queue
+from app.jobs import drain_token_queue, set_worker_app, tick_automations
+from app.redis_client import from_url as redis_from_url
 
 
 def main():
     app = create_app()
+    set_worker_app(app)
     redis_url = app.config["REDIS_URL"]
-    conn = Redis.from_url(redis_url)
+    conn = redis_from_url(redis_url)
     with app.app_context():
         print("worker started", flush=True)
         last_tick = 0
@@ -26,8 +27,8 @@ def main():
         while True:
             now = time.time()
             if now - last_tick > 30:
-                tick_automations(app)
-                drain_token_queue(app)
+                tick_automations()
+                drain_token_queue()
                 last_tick = now
             worker.work(burst=True, with_scheduler=False)
             time.sleep(2)

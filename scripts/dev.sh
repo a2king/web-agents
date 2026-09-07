@@ -8,4 +8,4 @@ export DATA_DIR="${DATA_DIR:-${ROOT}/data}"
 export PORT="${PORT:-5000}"
 mkdir -p "$DATA_DIR"
 cd "$ROOT/backend"
-python3 wsgi.py
+uv run python wsgi.py

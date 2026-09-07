@@ -261,12 +261,13 @@ def stream_session(user: User, session_id: int):
     if not session:
         return fail("会话不存在", 404)
     after = int(request.args.get("after", 0))
+    bus = current_app.bus
 
     def generate():
         last = after
         idle_rounds = 0
         while idle_rounds < 120:
-            events = current_app.bus.listen(f"session:{session_id}", after_id=last, timeout=15)
+            events = bus.listen(f"session:{session_id}", after_id=last, timeout=15)
             if not events:
                 yield "event: ping\ndata: {}\n\n"
                 idle_rounds += 1
@@ -275,7 +276,11 @@ def stream_session(user: User, session_id: int):
             for event in events:
                 last = int(event.get("seq") or event.get("id") or last)
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            if any(e.get("event_type") == "status" and e.get("payload", {}).get("status") in {"idle", "cancelled", "failed"} for e in events):
+            if any(
+                e.get("event_type") == "status"
+                and (e.get("payload") or {}).get("status") in {"idle", "cancelled", "failed"}
+                for e in events
+            ):
                 break
 
     return Response(generate(), mimetype="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

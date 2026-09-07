@@ -64,9 +64,9 @@ def create_bus(app):
     if not url:
         return MemoryBus()
     try:
-        import redis
+        from .redis_client import from_url as redis_from_url
 
-        client = redis.Redis.from_url(url)
+        client = redis_from_url(url)
         client.ping()
         return RedisBus(client)
     except Exception:

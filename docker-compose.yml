@@ -1,27 +1,46 @@
 services:
   mysql:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: webagent
       MYSQL_USER: webagent
       MYSQL_PASSWORD: webagent
       MYSQL_ROOT_PASSWORD: root
+    # 不占用宿主机 3306，避免与本机/公司 MySQL 冲突导致容器直接退出
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - ./backend/sql:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: mysql+pymysql://webagent:webagent@mysql:3306/webagent
       REDIS_URL: redis://redis:6379/0
@@ -31,15 +50,20 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
     command: gunicorn -b 0.0.0.0:5000 --workers 2 --threads 4 wsgi:app
 
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: mysql+pymysql://webagent:webagent@mysql:3306/webagent
       REDIS_URL: redis://redis:6379/0
@@ -47,8 +71,11 @@ services:
     volumes:
       - tenant_data:/data
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
     command: python worker.py
 
 volumes:

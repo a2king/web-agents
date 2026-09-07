@@ -3,23 +3,44 @@ from __future__ import annotations
 from datetime import datetime
 
 from croniter import croniter
+from flask import current_app
 
 from .agent import Cancelled, NeedConfirm, run_agent_turn
 from .extensions import db
 from .models import Automation, AutomationRun, Message, Session, Tenant
 from . import quota
 
+_worker_app = None
+
+
+def set_worker_app(app) -> None:
+    global _worker_app
+    _worker_app = app
+
+
+def _app():
+    try:
+        return current_app._get_current_object()
+    except RuntimeError:
+        if _worker_app is None:
+            raise
+        return _worker_app
+
+
+def _app():
+    return current_app._get_current_object()
+
 
 def enqueue(app, func, *args, **kwargs):
-    if app.config.get("WORKER_INLINE"):
-        return func(app, *args, **kwargs)
-    queue = getattr(app, "task_queue", None)
-    if queue is None:
-        return func(app, *args, **kwargs)
-    return queue.enqueue(func, app, *args, **kwargs)
+    """入队时不能把 Flask app 塞进 RQ：app 含局部函数，无法 pickle。"""
+    if app.config.get("WORKER_INLINE") or getattr(app, "task_queue", None) is None:
+        with app.app_context():
+            return func(*args, **kwargs)
+    return app.task_queue.enqueue(func, *args, **kwargs)
 
 
-def process_session(app, session_id: int, user_text: str, resume: bool = False):
+def process_session(session_id: int, user_text: str, resume: bool = False):
+    app = _app()
     with app.app_context():
         session = db.session.get(Session, session_id)
         if not session:
@@ -68,7 +89,8 @@ def process_session(app, session_id: int, user_text: str, resume: bool = False):
         app.cancel_flags.pop(session_id, None)
 
 
-def process_automation(app, automation_id: int):
+def process_automation(automation_id: int):
+    app = _app()
     with app.app_context():
         auto = db.session.get(Automation, automation_id)
         if not auto or not auto.enabled:
@@ -132,7 +154,8 @@ def next_cron(expr: str, now: datetime | None = None) -> datetime:
     return croniter(expr, base).get_next(datetime)
 
 
-def tick_automations(app):
+def tick_automations():
+    app = _app()
     with app.app_context():
         now = datetime.utcnow()
         due = Automation.query.filter(Automation.enabled.is_(True), Automation.next_run_at <= now).all()
@@ -140,8 +163,9 @@ def tick_automations(app):
             enqueue(app, process_automation, auto.id)
 
 
-def drain_token_queue(app):
+def drain_token_queue():
     """管理员上调额度后，尝试拉起因 token 超额排队的会话。"""
+    app = _app()
     with app.app_context():
         queued = Session.query.filter_by(status="queued", queue_reason="token_quota").all()
         for session in queued:

@@ -4,7 +4,7 @@ from .extensions import db
 
 
 class Tenant(db.Model):
-    __tablename__ = "tenants"
+    __tablename__ = "wa_tenants"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False, unique=True)
@@ -36,7 +36,7 @@ class Tenant(db.Model):
 
 
 class User(db.Model):
-    __tablename__ = "users"
+    __tablename__ = "wa_users"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(128), nullable=False, unique=True)
@@ -44,7 +44,7 @@ class User(db.Model):
     display_name = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(32), nullable=False, default="user")  # admin | user
     ldap_uid = db.Column(db.String(255), nullable=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     tenant = db.relationship("Tenant", backref="users")
@@ -62,7 +62,7 @@ class User(db.Model):
 
 
 class ModelConfig(db.Model):
-    __tablename__ = "model_configs"
+    __tablename__ = "wa_model_configs"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
@@ -86,7 +86,7 @@ class ModelConfig(db.Model):
 
 
 class McpServer(db.Model):
-    __tablename__ = "mcp_servers"
+    __tablename__ = "wa_mcp_servers"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
@@ -110,28 +110,28 @@ class McpServer(db.Model):
 
 
 class TenantMcp(db.Model):
-    __tablename__ = "tenant_mcps"
+    __tablename__ = "wa_tenant_mcps"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    mcp_id = db.Column(db.Integer, db.ForeignKey("mcp_servers.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
+    mcp_id = db.Column(db.Integer, db.ForeignKey("wa_mcp_servers.id"), nullable=False)
     enabled = db.Column(db.Boolean, default=True)
 
     mcp = db.relationship("McpServer")
 
 
 class Skill(db.Model):
-    __tablename__ = "skills"
+    __tablename__ = "wa_skills"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
     name = db.Column(db.String(128), nullable=False)
     slug = db.Column(db.String(128), nullable=False)
     description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    __table_args__ = (db.UniqueConstraint("tenant_id", "slug", name="uq_tenant_skill_slug"),)
+    __table_args__ = (db.UniqueConstraint("tenant_id", "slug", name="uq_wa_skills_tenant_slug"),)
 
     def to_dict(self):
         return {
@@ -144,13 +144,13 @@ class Skill(db.Model):
 
 
 class Session(db.Model):
-    __tablename__ = "sessions"
+    __tablename__ = "wa_sessions"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
     title = db.Column(db.String(255), nullable=False, default="新会话")
-    model_id = db.Column(db.Integer, db.ForeignKey("model_configs.id"), nullable=True)
+    model_id = db.Column(db.Integer, db.ForeignKey("wa_model_configs.id"), nullable=True)
     kind = db.Column(db.String(32), nullable=False, default="chat")  # chat | automation
     # idle | running | awaiting_confirm | queued | cancelled | failed
     status = db.Column(db.String(32), nullable=False, default="idle")
@@ -188,10 +188,10 @@ class Session(db.Model):
 
 
 class Message(db.Model):
-    __tablename__ = "messages"
+    __tablename__ = "wa_messages"
 
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey("wa_sessions.id"), nullable=False)
     role = db.Column(db.String(32), nullable=False)
     content = db.Column(db.Text, nullable=False, default="")
     meta_json = db.Column(db.Text, nullable=True)
@@ -209,10 +209,10 @@ class Message(db.Model):
 
 
 class SessionEvent(db.Model):
-    __tablename__ = "session_events"
+    __tablename__ = "wa_session_events"
 
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey("wa_sessions.id"), nullable=False)
     event_type = db.Column(db.String(64), nullable=False)
     payload_json = db.Column(db.Text, nullable=False, default="{}")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -228,11 +228,11 @@ class SessionEvent(db.Model):
 
 
 class ConfirmGrant(db.Model):
-    __tablename__ = "confirm_grants"
+    __tablename__ = "wa_confirm_grants"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey("wa_sessions.id"), nullable=True)
     scope = db.Column(db.String(32), nullable=False)  # once | session | account
     action_type = db.Column(db.String(64), nullable=False, default="destructive_delete")
     consumed = db.Column(db.Boolean, default=False)
@@ -240,30 +240,30 @@ class ConfirmGrant(db.Model):
 
 
 class TokenUsage(db.Model):
-    __tablename__ = "token_usages"
+    __tablename__ = "wa_token_usages"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=True)
     week_start = db.Column(db.Date, nullable=False)
     prompt_tokens = db.Column(db.Integer, default=0)
     completion_tokens = db.Column(db.Integer, default=0)
     total_tokens = db.Column(db.Integer, default=0)
 
-    __table_args__ = (db.UniqueConstraint("tenant_id", "week_start", name="uq_tenant_week"),)
+    __table_args__ = (db.UniqueConstraint("tenant_id", "week_start", name="uq_wa_token_usages_tenant_week"),)
 
 
 class Automation(db.Model):
-    __tablename__ = "automations"
+    __tablename__ = "wa_automations"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
     name = db.Column(db.String(128), nullable=False)
     cron_expr = db.Column(db.String(64), nullable=False)
     prompt = db.Column(db.Text, nullable=False)
     skill_slug = db.Column(db.String(128), nullable=True)
-    model_id = db.Column(db.Integer, db.ForeignKey("model_configs.id"), nullable=True)
+    model_id = db.Column(db.Integer, db.ForeignKey("wa_model_configs.id"), nullable=True)
     enabled = db.Column(db.Boolean, default=True)
     next_run_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -285,11 +285,11 @@ class Automation(db.Model):
 
 
 class AutomationRun(db.Model):
-    __tablename__ = "automation_runs"
+    __tablename__ = "wa_automation_runs"
 
     id = db.Column(db.Integer, primary_key=True)
-    automation_id = db.Column(db.Integer, db.ForeignKey("automations.id"), nullable=False)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
+    automation_id = db.Column(db.Integer, db.ForeignKey("wa_automations.id"), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
     status = db.Column(db.String(32), nullable=False, default="queued")
     log = db.Column(db.Text, nullable=True)
     error_message = db.Column(db.Text, nullable=True)

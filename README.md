@@ -19,7 +19,7 @@
 ## 技术栈
 
 - 前端：React + TypeScript + Ant Design Pro 组件（简化布局）
-- 后端：Python Flask + SQLAlchemy
+- 后端：Python Flask + SQLAlchemy（uv 管理依赖）
 - 数据：现有 MySQL、Redis（任务队列 RQ + 事件流）
 - Agent：LangGraph + langchain-openai（兼容 OpenAI 协议）
 
@@ -32,27 +32,27 @@ cp .env.example .env
 # 修改 DATABASE_URL、REDIS_URL
 ```
 
-2. 创建数据库（MySQL）：
+2. 创建数据库并执行建表脚本（MySQL）：
 
 ```sql
-CREATE DATABASE webagent DEFAULT CHARSET utf8mb4;
+CREATE DATABASE webagent DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE webagent;
+SOURCE backend/sql/001_init.sql;
 ```
 
 3. 启动后端：
 
 ```bash
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export $(grep -v '^#' ../.env | xargs)
-python wsgi.py
+uv sync
+uv run --env-file ../.env python wsgi.py
 ```
 
 4. 启动 Worker（后台执行会话 / 定时自动化）：
 
 ```bash
-cd backend && source .venv/bin/activate
-python worker.py
+cd backend
+uv run --env-file ../.env python worker.py
 ```
 
 本地调试可不跑 Worker，设置 `WORKER_INLINE=1` 则在请求线程内执行。
@@ -83,7 +83,7 @@ npm run dev
 
 ```bash
 cd backend
-WORKER_INLINE=1 pytest
+WORKER_INLINE=1 uv run pytest
 ```
 
 ## 部署
