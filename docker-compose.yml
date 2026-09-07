@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: webagent
+      MYSQL_USER: webagent
+      MYSQL_PASSWORD: webagent
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql+pymysql://webagent:webagent@mysql:3306/webagent
+      REDIS_URL: redis://redis:6379/0
+      DATA_DIR: /data
+    volumes:
+      - tenant_data:/data
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - redis
+    command: gunicorn -b 0.0.0.0:5000 --workers 2 --threads 4 wsgi:app
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql+pymysql://webagent:webagent@mysql:3306/webagent
+      REDIS_URL: redis://redis:6379/0
+      DATA_DIR: /data
+    volumes:
+      - tenant_data:/data
+    depends_on:
+      - mysql
+      - redis
+    command: python worker.py
+
+volumes:
+  mysql_data:
+  tenant_data:

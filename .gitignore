@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+data/
+.env
+node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+.DS_Store
+*.log
+backend/.pytest_cache/
