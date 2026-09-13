@@ -104,7 +104,6 @@ def seed_admin(app: Flask) -> None:
         max_file_mb=200,
         weekly_token_quota=500000,
         max_parallel_sessions=3,
-        max_parallel_automations=1,
     )
     db.session.add(tenant)
     db.session.flush()

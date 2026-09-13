@@ -5,15 +5,12 @@ from pathlib import Path
 
 from flask import Blueprint, Response, current_app, request, send_file
 from flask_jwt_extended import create_access_token
-from croniter import croniter
 
 from . import filesvc, jobs, quota, risk
 from .agent import extract_skill_zip, tenant_mcps
 from .extensions import db
 from .ldap_client import LdapAuthError, authenticate_ldap
 from .models import (
-    Automation,
-    AutomationRun,
     Message,
     McpServer,
     ModelConfig,
@@ -38,9 +35,6 @@ def _quota_fields(data: dict, tenant: Tenant | None = None) -> dict:
         "max_file_mb": int(data.get("max_file_mb", src.max_file_mb if src else 200)),
         "weekly_token_quota": int(data.get("weekly_token_quota", src.weekly_token_quota if src else 200000)),
         "max_parallel_sessions": int(data.get("max_parallel_sessions", src.max_parallel_sessions if src else 2)),
-        "max_parallel_automations": int(
-            data.get("max_parallel_automations", src.max_parallel_automations if src else 1)
-        ),
     }
 
 
@@ -430,77 +424,6 @@ def delete_skill(user: User, skill_id: int):
     return ok(True)
 
 
-@bp.get("/automations")
-@login_required
-def list_automations(user: User):
-    rows = Automation.query.filter_by(tenant_id=user.tenant_id, user_id=user.id).order_by(Automation.id.desc()).all()
-    return ok([r.to_dict() for r in rows])
-
-
-@bp.post("/automations")
-@login_required
-def create_automation(user: User):
-    data = request.get_json(force=True, silent=True) or {}
-    expr = data.get("cron_expr") or ""
-    if not croniter.is_valid(expr):
-        return fail("Cron 表达式无效")
-    auto = Automation(
-        tenant_id=user.tenant_id,
-        user_id=user.id,
-        name=data.get("name") or "自动化任务",
-        cron_expr=expr,
-        prompt=data.get("prompt") or "",
-        skill_slug=data.get("skill_slug"),
-        model_id=data.get("model_id"),
-        enabled=bool(data.get("enabled", True)),
-        next_run_at=jobs.next_cron(expr),
-    )
-    db.session.add(auto)
-    db.session.commit()
-    return ok(auto.to_dict())
-
-
-@bp.put("/automations/<int:auto_id>")
-@login_required
-def update_automation(user: User, auto_id: int):
-    auto = Automation.query.filter_by(id=auto_id, tenant_id=user.tenant_id).first()
-    if not auto:
-        return fail("任务不存在", 404)
-    data = request.get_json(force=True, silent=True) or {}
-    if "cron_expr" in data:
-        if not croniter.is_valid(data["cron_expr"]):
-            return fail("Cron 表达式无效")
-        auto.cron_expr = data["cron_expr"]
-        auto.next_run_at = jobs.next_cron(auto.cron_expr)
-    for field in ("name", "prompt", "skill_slug", "model_id", "enabled"):
-        if field in data:
-            setattr(auto, field, data[field])
-    db.session.commit()
-    return ok(auto.to_dict())
-
-
-@bp.delete("/automations/<int:auto_id>")
-@login_required
-def delete_automation(user: User, auto_id: int):
-    auto = Automation.query.filter_by(id=auto_id, tenant_id=user.tenant_id).first()
-    if not auto:
-        return fail("任务不存在", 404)
-    AutomationRun.query.filter_by(automation_id=auto.id).delete()
-    db.session.delete(auto)
-    db.session.commit()
-    return ok(True)
-
-
-@bp.get("/automations/<int:auto_id>/runs")
-@login_required
-def automation_runs(user: User, auto_id: int):
-    auto = Automation.query.filter_by(id=auto_id, tenant_id=user.tenant_id).first()
-    if not auto:
-        return fail("任务不存在", 404)
-    rows = AutomationRun.query.filter_by(automation_id=auto.id).order_by(AutomationRun.id.desc()).limit(100).all()
-    return ok([r.to_dict() for r in rows])
-
-
 @bp.get("/admin/tenants")
 @admin_required
 def admin_tenants(user: User):
@@ -571,8 +494,6 @@ def admin_delete_tenant(user: User, tenant_id: int):
         return fail("不能删除自己的租户")
     current_app.runtime.destroy_workspace(tenant.id)
     for model in (
-        AutomationRun,
-        Automation,
         SessionEvent,
         Message,
         Session,
@@ -719,11 +640,9 @@ def admin_delete_mcp(user: User, mcp_id: int):
 @admin_required
 def admin_queue(user: User):
     rows = Session.query.filter_by(status="queued").order_by(Session.updated_at.desc()).all()
-    auto_rows = AutomationRun.query.filter_by(status="queued").order_by(AutomationRun.id.desc()).all()
     return ok(
         {
             "sessions": [r.to_dict() for r in rows],
-            "automations": [r.to_dict() for r in auto_rows],
             "week_start": week_start().isoformat(),
         }
     )

@@ -40,7 +40,6 @@ def test_create_tenant_and_quotas(client, admin_headers, app):
             "max_file_mb": 10,
             "weekly_token_quota": 1000,
             "max_parallel_sessions": 1,
-            "max_parallel_automations": 1,
         },
     )
     assert resp.status_code == 200
@@ -167,22 +166,6 @@ def test_session_delete_removes_artifacts(client, admin_headers, app):
     resp = client.delete(f"/api/sessions/{sid}", headers=admin_headers)
     assert resp.status_code == 200
     assert not path.exists()
-
-
-def test_automation_cron_validation(client, admin_headers):
-    bad = client.post(
-        "/api/automations",
-        headers=admin_headers,
-        json={"name": "bad", "cron_expr": "not-a-cron", "prompt": "x"},
-    )
-    assert bad.status_code == 400
-    good = client.post(
-        "/api/automations",
-        headers=admin_headers,
-        json={"name": "weekly", "cron_expr": "0 9 * * 1", "prompt": "/report 生成", "skill_slug": "report"},
-    )
-    assert good.status_code == 200
-    assert good.get_json()["data"]["next_run_at"]
 
 
 def test_destructive_detect():
