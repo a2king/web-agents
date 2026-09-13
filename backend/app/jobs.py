@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
-
-from croniter import croniter
 from flask import current_app
 
 from .agent import Cancelled, NeedConfirm, run_agent_turn
 from .extensions import db
-from .models import Automation, AutomationRun, Message, Session, Tenant
+from .models import Message, Session, Tenant
 from . import quota
 
 _worker_app = None
@@ -25,10 +22,6 @@ def _app():
         if _worker_app is None:
             raise
         return _worker_app
-
-
-def _app():
-    return current_app._get_current_object()
 
 
 def enqueue(app, func, *args, **kwargs):
@@ -87,80 +80,6 @@ def process_session(session_id: int, user_text: str, resume: bool = False):
             db.session.commit()
             app.events.emit(session.id, "error", {"message": str(exc)})
         app.cancel_flags.pop(session_id, None)
-
-
-def process_automation(automation_id: int):
-    app = _app()
-    with app.app_context():
-        auto = db.session.get(Automation, automation_id)
-        if not auto or not auto.enabled:
-            return
-        tenant = db.session.get(Tenant, auto.tenant_id)
-        run = AutomationRun(automation_id=auto.id, tenant_id=auto.tenant_id, status="queued")
-        db.session.add(run)
-        db.session.commit()
-        if quota.tokens_over_quota(tenant):
-            run.status = "queued"
-            run.error_message = "token 超额，等待管理员分配"
-            db.session.commit()
-            return
-        ok, reason = quota.can_start_automation(tenant)
-        if not ok:
-            run.status = "queued"
-            run.error_message = reason
-            db.session.commit()
-            return
-        run.status = "running"
-        db.session.commit()
-        session = Session(
-            tenant_id=auto.tenant_id,
-            user_id=auto.user_id,
-            title=f"[自动化] {auto.name}",
-            model_id=auto.model_id,
-            kind="automation",
-            status="running",
-        )
-        db.session.add(session)
-        db.session.commit()
-        prompt = auto.prompt
-        if auto.skill_slug and not prompt.startswith("/"):
-            prompt = f"/{auto.skill_slug} {prompt}"
-        db.session.add(Message(session_id=session.id, role="user", content=prompt))
-        db.session.commit()
-        logs = []
-        try:
-            text = run_agent_turn(app, session.id, prompt)
-            logs.append(text or "")
-            session.status = "idle"
-            run.status = "success"
-            run.log = "\n".join(logs)
-            run.finished_at = datetime.utcnow()
-        except NeedConfirm as exc:
-            session.status = "awaiting_confirm"
-            run.status = "awaiting_confirm"
-            run.error_message = exc.payload.get("reason")
-            run.log = str(exc.payload)
-        except Exception as exc:  # noqa: BLE001
-            session.status = "failed"
-            run.status = "failed"
-            run.error_message = str(exc)
-            run.finished_at = datetime.utcnow()
-        auto.next_run_at = next_cron(auto.cron_expr)
-        db.session.commit()
-
-
-def next_cron(expr: str, now: datetime | None = None) -> datetime:
-    base = now or datetime.utcnow()
-    return croniter(expr, base).get_next(datetime)
-
-
-def tick_automations():
-    app = _app()
-    with app.app_context():
-        now = datetime.utcnow()
-        due = Automation.query.filter(Automation.enabled.is_(True), Automation.next_run_at <= now).all()
-        for auto in due:
-            enqueue(app, process_automation, auto.id)
 
 
 def drain_token_queue():

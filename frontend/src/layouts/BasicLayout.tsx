@@ -4,7 +4,6 @@ import {
   FileOutlined,
   LogoutOutlined,
   RobotOutlined,
-  ScheduleOutlined,
   SettingOutlined,
   ThunderboltOutlined,
   UnorderedListOutlined,
@@ -26,7 +25,6 @@ export default function BasicLayout() {
       { path: "/sessions", name: "对话", icon: <RobotOutlined /> },
       { path: "/files", name: "文件空间", icon: <FileOutlined /> },
       { path: "/skills", name: "Skills", icon: <ThunderboltOutlined /> },
-      { path: "/automations", name: "自动化任务", icon: <ScheduleOutlined /> },
       { path: "/usage", name: "Token 用量", icon: <DashboardOutlined /> },
       ...(user?.role === "admin"
         ? [

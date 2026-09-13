@@ -54,7 +54,6 @@ export default function Tenants() {
           { title: "磁盘MB", dataIndex: "disk_mb" },
           { title: "周Token", dataIndex: "weekly_token_quota" },
           { title: "并行会话", dataIndex: "max_parallel_sessions" },
-          { title: "并行自动化", dataIndex: "max_parallel_automations" },
           { title: "已用Token", render: (_, r) => r.usage?.total_tokens },
           {
             title: "操作",
@@ -94,7 +93,6 @@ export default function Tenants() {
             max_file_mb: 200,
             weekly_token_quota: 200000,
             max_parallel_sessions: 2,
-            max_parallel_automations: 1,
           }}
         >
           {!editing && (
@@ -126,9 +124,6 @@ export default function Tenants() {
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="max_parallel_sessions" label="最大并行会话">
-            <InputNumber min={1} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="max_parallel_automations" label="最大并行自动化">
             <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
         </Form>

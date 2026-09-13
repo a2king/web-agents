@@ -16,7 +16,6 @@ CREATE TABLE wa_tenants (
   max_file_mb INT NOT NULL DEFAULT 200,
   weekly_token_quota INT NOT NULL DEFAULT 200000,
   max_parallel_sessions INT NOT NULL DEFAULT 2,
-  max_parallel_automations INT NOT NULL DEFAULT 1,
   status VARCHAR(32) NOT NULL DEFAULT 'active',
   created_at DATETIME NULL,
   updated_at DATETIME NULL,
@@ -171,44 +170,4 @@ CREATE TABLE wa_token_usages (
   KEY idx_wa_token_usages_user_id (user_id),
   CONSTRAINT fk_wa_token_usages_tenant_id FOREIGN KEY (tenant_id) REFERENCES wa_tenants (id),
   CONSTRAINT fk_wa_token_usages_user_id FOREIGN KEY (user_id) REFERENCES wa_users (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 定时自动化
-CREATE TABLE wa_automations (
-  id INT NOT NULL AUTO_INCREMENT,
-  tenant_id INT NOT NULL,
-  user_id INT NOT NULL,
-  name VARCHAR(128) NOT NULL,
-  cron_expr VARCHAR(64) NOT NULL,
-  prompt TEXT NOT NULL,
-  skill_slug VARCHAR(128) NULL,
-  model_id INT NULL,
-  enabled TINYINT(1) NULL DEFAULT 1,
-  next_run_at DATETIME NULL,
-  created_at DATETIME NULL,
-  PRIMARY KEY (id),
-  KEY idx_wa_automations_tenant_id (tenant_id),
-  KEY idx_wa_automations_user_id (user_id),
-  KEY idx_wa_automations_model_id (model_id),
-  CONSTRAINT fk_wa_automations_tenant_id FOREIGN KEY (tenant_id) REFERENCES wa_tenants (id),
-  CONSTRAINT fk_wa_automations_user_id FOREIGN KEY (user_id) REFERENCES wa_users (id),
-  CONSTRAINT fk_wa_automations_model_id FOREIGN KEY (model_id) REFERENCES wa_model_configs (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 自动化执行历史
-CREATE TABLE wa_automation_runs (
-  id INT NOT NULL AUTO_INCREMENT,
-  automation_id INT NOT NULL,
-  tenant_id INT NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'queued',
-  log TEXT NULL,
-  error_message TEXT NULL,
-  tokens_used INT NULL DEFAULT 0,
-  started_at DATETIME NULL,
-  finished_at DATETIME NULL,
-  PRIMARY KEY (id),
-  KEY idx_wa_automation_runs_automation_id (automation_id),
-  KEY idx_wa_automation_runs_tenant_id (tenant_id),
-  CONSTRAINT fk_wa_automation_runs_automation_id FOREIGN KEY (automation_id) REFERENCES wa_automations (id),
-  CONSTRAINT fk_wa_automation_runs_tenant_id FOREIGN KEY (tenant_id) REFERENCES wa_tenants (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

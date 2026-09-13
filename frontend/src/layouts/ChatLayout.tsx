@@ -4,7 +4,6 @@ import {
   FileOutlined,
   LogoutOutlined,
   PlusOutlined,
-  ScheduleOutlined,
   SettingOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
@@ -98,9 +97,6 @@ export default function ChatLayout() {
           </Link>
           <Link to="/skills">
             <ThunderboltOutlined /> Skills
-          </Link>
-          <Link to="/automations">
-            <ScheduleOutlined /> 自动化
           </Link>
           <Link to="/usage">
             <DashboardOutlined /> Token 用量

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .extensions import db
-from .models import AutomationRun, Session, Tenant, TokenUsage
+from .models import Session, Tenant, TokenUsage
 from .utils import week_start
 
 
@@ -37,26 +37,11 @@ def running_sessions(tenant_id: int) -> int:
     ).count()
 
 
-def running_automations(tenant_id: int) -> int:
-    return AutomationRun.query.filter(
-        AutomationRun.tenant_id == tenant_id,
-        AutomationRun.status.in_(["running", "queued"]),
-    ).count()
-
-
 def can_start_session(tenant: Tenant) -> tuple[bool, str]:
     if tenant.status != "active":
         return False, "租户已停用"
     if running_sessions(tenant.id) >= tenant.max_parallel_sessions:
         return False, "已达到最大并行会话数"
-    return True, ""
-
-
-def can_start_automation(tenant: Tenant) -> tuple[bool, str]:
-    if tenant.status != "active":
-        return False, "租户已停用"
-    if running_automations(tenant.id) >= tenant.max_parallel_automations:
-        return False, "已达到最大并行自动化数"
     return True, ""
 
 

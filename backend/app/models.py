@@ -14,7 +14,6 @@ class Tenant(db.Model):
     max_file_mb = db.Column(db.Integer, nullable=False, default=200)
     weekly_token_quota = db.Column(db.Integer, nullable=False, default=200000)
     max_parallel_sessions = db.Column(db.Integer, nullable=False, default=2)
-    max_parallel_automations = db.Column(db.Integer, nullable=False, default=1)
     status = db.Column(db.String(32), nullable=False, default="active")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -29,7 +28,6 @@ class Tenant(db.Model):
             "max_file_mb": self.max_file_mb,
             "weekly_token_quota": self.weekly_token_quota,
             "max_parallel_sessions": self.max_parallel_sessions,
-            "max_parallel_automations": self.max_parallel_automations,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
@@ -151,7 +149,7 @@ class Session(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
     title = db.Column(db.String(255), nullable=False, default="新会话")
     model_id = db.Column(db.Integer, db.ForeignKey("wa_model_configs.id"), nullable=True)
-    kind = db.Column(db.String(32), nullable=False, default="chat")  # chat | automation
+    kind = db.Column(db.String(32), nullable=False, default="chat")
     # idle | running | awaiting_confirm | queued | cancelled | failed
     status = db.Column(db.String(32), nullable=False, default="idle")
     queue_reason = db.Column(db.String(64), nullable=True)
@@ -251,62 +249,3 @@ class TokenUsage(db.Model):
     total_tokens = db.Column(db.Integer, default=0)
 
     __table_args__ = (db.UniqueConstraint("tenant_id", "week_start", name="uq_wa_token_usages_tenant_week"),)
-
-
-class Automation(db.Model):
-    __tablename__ = "wa_automations"
-
-    id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("wa_users.id"), nullable=False)
-    name = db.Column(db.String(128), nullable=False)
-    cron_expr = db.Column(db.String(64), nullable=False)
-    prompt = db.Column(db.Text, nullable=False)
-    skill_slug = db.Column(db.String(128), nullable=True)
-    model_id = db.Column(db.Integer, db.ForeignKey("wa_model_configs.id"), nullable=True)
-    enabled = db.Column(db.Boolean, default=True)
-    next_run_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    model = db.relationship("ModelConfig")
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "cron_expr": self.cron_expr,
-            "prompt": self.prompt,
-            "skill_slug": self.skill_slug,
-            "model_id": self.model_id,
-            "enabled": self.enabled,
-            "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-        }
-
-
-class AutomationRun(db.Model):
-    __tablename__ = "wa_automation_runs"
-
-    id = db.Column(db.Integer, primary_key=True)
-    automation_id = db.Column(db.Integer, db.ForeignKey("wa_automations.id"), nullable=False)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("wa_tenants.id"), nullable=False)
-    status = db.Column(db.String(32), nullable=False, default="queued")
-    log = db.Column(db.Text, nullable=True)
-    error_message = db.Column(db.Text, nullable=True)
-    tokens_used = db.Column(db.Integer, default=0)
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
-    finished_at = db.Column(db.DateTime, nullable=True)
-
-    automation = db.relationship("Automation", backref="runs")
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "automation_id": self.automation_id,
-            "status": self.status,
-            "log": self.log,
-            "error_message": self.error_message,
-            "tokens_used": self.tokens_used,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-        }

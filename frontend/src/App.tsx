@@ -7,7 +7,6 @@ import ChatHome from "./pages/ChatHome";
 import SessionDetail from "./pages/SessionDetail";
 import Files from "./pages/Files";
 import Skills from "./pages/Skills";
-import Automations from "./pages/Automations";
 import Usage from "./pages/Usage";
 import Tenants from "./pages/admin/Tenants";
 import Models from "./pages/admin/Models";
@@ -54,7 +53,6 @@ export default function App() {
           <Route index element={<Navigate to="/sessions" replace />} />
           <Route path="files" element={<Files />} />
           <Route path="skills" element={<Skills />} />
-          <Route path="automations" element={<Automations />} />
           <Route path="usage" element={<Usage />} />
           <Route
             path="admin/tenants"
